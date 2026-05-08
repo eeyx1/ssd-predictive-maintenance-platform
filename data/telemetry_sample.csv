@@ -1,0 +1,7 @@
+device_id,firmware_version,power_on_hours,nand_erase_cycles,reallocated_block_count,ecc_correction_rate,average_write_latency_ms,timeout_count,controller_reset_count,temperature_c,probable_subsystem
+ssd_101,FW_1.2.4,1800,1200,2,0.22,2.8,0,0,42,Host
+ssd_102,FW_1.2.4,4200,2850,24,0.81,6.1,7,3,68,NAND
+ssd_103,FW_1.3.0,3600,2100,8,0.59,4.7,2,1,61,FTL
+ssd_104,FW_1.3.1,5100,3100,17,0.74,5.8,5,2,64,NAND
+ssd_105,FW_1.1.9,1400,900,1,0.18,2.4,0,0,40,Host
+ssd_106,FW_1.3.1,2600,1700,6,0.51,4.3,4,2,59,Hardware

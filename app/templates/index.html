@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SSD Predictive Maintenance Platform</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <section class="topbar">
+        <div>
+          <p class="eyebrow">SSD Predictive Maintenance</p>
+          <h1>Fleet Reliability Operations Console</h1>
+          <p class="lede">
+            Monitor SSD health, prioritize alerts, assign owner teams, and generate
+            engineer-friendly investigation summaries. Default explanation model:
+            <strong>{{ model_name }}</strong>.
+          </p>
+        </div>
+        <div class="status-grid">
+          <div><span>Devices</span><strong>{{ device_count }}</strong></div>
+          <div><span>Mode</span><strong>Triage</strong></div>
+        </div>
+      </section>
+
+      <section class="fleet-metrics" id="fleetMetrics"></section>
+
+      <section class="grid">
+        <article class="panel">
+          <div class="panel-head">
+            <h2>Fleet Risk Table</h2>
+            <button id="reloadButton">Reload</button>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Device</th>
+                  <th>FW</th>
+                  <th>Risk</th>
+                  <th>Score</th>
+                  <th>Priority</th>
+                  <th>Subsystem</th>
+                </tr>
+              </thead>
+              <tbody id="deviceTable"></tbody>
+            </table>
+          </div>
+        </article>
+
+        <article class="panel detail-panel">
+          <div class="panel-head">
+            <h2>Investigation Summary</h2>
+            <span id="selectedDevice">Select a device</span>
+          </div>
+          <div id="detailContent" class="detail-empty">
+            Pick a device from the table to view the generated maintenance report.
+          </div>
+        </article>
+      </section>
+
+      <section class="grid secondary">
+        <article class="panel">
+          <div class="panel-head">
+            <h2>Alert Queue</h2>
+            <button id="reportButton">Fleet Report</button>
+          </div>
+          <div id="alertQueue" class="alert-queue"></div>
+        </article>
+        <article class="panel">
+          <h2>Fleet Report</h2>
+          <p id="fleetReport" class="report">Generate a fleet report to summarize operational risk.</p>
+        </article>
+      </section>
+    </main>
+
+    <script>
+      const tableBody = document.getElementById("deviceTable");
+      const detailContent = document.getElementById("detailContent");
+      const selectedDevice = document.getElementById("selectedDevice");
+      const reloadButton = document.getElementById("reloadButton");
+      const fleetMetrics = document.getElementById("fleetMetrics");
+      const alertQueue = document.getElementById("alertQueue");
+      const reportButton = document.getElementById("reportButton");
+      const fleetReport = document.getElementById("fleetReport");
+
+      async function loadDevices() {
+        const [devicesResponse, summaryResponse, alertsResponse] = await Promise.all([
+          fetch("/api/devices"),
+          fetch("/api/fleet-summary"),
+          fetch("/api/alerts"),
+        ]);
+        const payload = await devicesResponse.json();
+        const summaryPayload = await summaryResponse.json();
+        const alertsPayload = await alertsResponse.json();
+        const summary = summaryPayload.summary;
+        tableBody.innerHTML = "";
+        fleetMetrics.innerHTML = `
+          <div class="metric"><span>Average Risk</span><strong>${summary.average_risk_score}</strong></div>
+          <div class="metric"><span>High Risk</span><strong>${summary.risk_counts.high}</strong></div>
+          <div class="metric"><span>P1 Alerts</span><strong>${summary.p1_alerts}</strong></div>
+          <div class="metric"><span>Highest Risk</span><strong>${summary.highest_risk_device}</strong></div>
+        `;
+
+        payload.devices.forEach((device) => {
+          const row = document.createElement("tr");
+          row.innerHTML = `
+            <td>${device.device_id}</td>
+            <td>${device.firmware_version}</td>
+            <td><span class="pill pill-${device.risk_level}">${device.risk_level}</span></td>
+            <td>${device.risk_score}</td>
+            <td>${device.priority}</td>
+            <td>${device.probable_subsystem}</td>
+          `;
+          row.addEventListener("click", () => loadDevice(device.device_id));
+          tableBody.appendChild(row);
+        });
+
+        alertQueue.innerHTML = alertsPayload.alerts
+          .slice(0, 6)
+          .map(
+            (item) => `
+              <div class="alert-card">
+                <div>
+                  <strong>${item.alert_id}</strong>
+                  <span>${item.device_id} | ${item.owner_team}</span>
+                </div>
+                <div class="alert-meta">
+                  <b>${item.priority}</b>
+                  <span>${item.sla_hours}h</span>
+                </div>
+              </div>
+            `
+          )
+          .join("");
+      }
+
+      async function loadDevice(deviceId) {
+        selectedDevice.textContent = deviceId;
+        detailContent.innerHTML = "Loading report...";
+        const response = await fetch(`/api/devices/${deviceId}`);
+        const payload = await response.json();
+        const { device, prediction, trend, explanation } = payload;
+        detailContent.innerHTML = `
+          <div class="summary-grid">
+            <div class="summary-card">
+              <p class="summary-label">Risk Score</p>
+              <p class="summary-value">${prediction.risk_score}</p>
+            </div>
+            <div class="summary-card">
+              <p class="summary-label">Subsystem</p>
+              <p class="summary-value">${prediction.probable_subsystem}</p>
+            </div>
+            <div class="summary-card">
+              <p class="summary-label">Priority</p>
+              <p class="summary-value">${prediction.priority}</p>
+            </div>
+            <div class="summary-card">
+              <p class="summary-label">Owner</p>
+              <p class="summary-value small">${prediction.owner_team}</p>
+            </div>
+          </div>
+          <h3>Top Signals</h3>
+          <ul class="signals">
+            ${prediction.top_signals.map((item) => `<li>${item}</li>`).join("")}
+          </ul>
+          <h3>Recommended Actions</h3>
+          <ul class="signals">
+            ${prediction.recommended_actions.map((item) => `<li>${item}</li>`).join("")}
+          </ul>
+          <h3>7-Day Risk Trace</h3>
+          <div class="trend-list">
+            ${trend.map((item) => `<span>${item.day}: ${item.risk_score}</span>`).join("")}
+          </div>
+          <h3>Engineer Summary</h3>
+          <p class="report">${explanation}</p>
+        `;
+      }
+
+      async function loadReport() {
+        fleetReport.textContent = "Generating fleet report...";
+        const response = await fetch("/api/report");
+        const payload = await response.json();
+        fleetReport.textContent = payload.report;
+      }
+
+      reloadButton.addEventListener("click", loadDevices);
+      reportButton.addEventListener("click", loadReport);
+      loadDevices();
+    </script>
+  </body>
+</html>
