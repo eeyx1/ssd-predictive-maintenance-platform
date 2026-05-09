@@ -130,6 +130,65 @@ Why it helps industry:
 - gives managers a concise view of current fleet risk
 - can be extended into email, PDF, or ticket automation
 
+## Industrial v2 Upgrade
+
+### 1. Weighted Risk Breakdown
+
+Each device prediction now includes `risk_breakdown`, a list of risk-driving signals with:
+
+- signal name
+- weight added to the score
+- telemetry metric
+- observed value
+- threshold that triggered the signal
+
+Why it helps industry:
+
+- reliability engineers can explain why a device is high risk
+- the scoring logic is easier to tune and review
+- it avoids a black-box dashboard result
+
+### 2. Confidence and Policy Versioning
+
+Each prediction now includes:
+
+- `policy_version`: `ssd-risk-policy-v2`
+- confidence level
+- confidence reason
+
+Why it helps industry:
+
+- teams can track which scoring policy produced an alert
+- reviewers know whether multiple independent signals support the result
+- it creates a cleaner path for model governance and future ML replacement
+
+### 3. Maintenance Work Orders
+
+The new `/api/work-orders` endpoint converts alerts into work orders with:
+
+- work order ID
+- owner team
+- SLA hours
+- primary hypothesis
+- evidence bundle
+- runbook steps
+- closure criteria
+
+Why it helps industry:
+
+- alerts become executable engineering tasks
+- owner teams know what evidence to inspect
+- managers can track whether high-risk devices were handled within SLA
+
+### 4. Industrial Delivery Readiness
+
+The project now includes:
+
+- automated tests for risk breakdown, work-order generation, and API behavior
+- `Dockerfile` for reproducible deployment
+- `.env.example` for configuration
+- GitHub Actions CI to run tests on push and pull request
+
 ## Tech Stack
 
 - Python
@@ -170,7 +229,13 @@ app/
   static/styles.css       operational dashboard styling
 data/
   telemetry_sample.csv    sample SSD telemetry
+tests/
+  test_industrial_features.py
+Dockerfile                container runtime
+.github/workflows/ci.yml  GitHub Actions test workflow
+.env.example              environment variable template
 requirements.txt          dependencies
+requirements-dev.txt      test dependencies
 README.md                 project guide
 ```
 
@@ -181,6 +246,7 @@ README.md                 project guide
 - `GET /api/devices/{device_id}` returns device detail, trend, actions, and explanation
 - `GET /api/fleet-summary` returns fleet-level KPIs
 - `GET /api/alerts` returns prioritized alert queue
+- `GET /api/work-orders` returns maintenance work orders with owner, SLA, evidence, and closure criteria
 - `GET /api/report` returns a fleet reliability report
 - `GET /health` checks service status
 
@@ -203,6 +269,20 @@ Optional:
 ```bash
 set OPENAI_API_KEY=your_key
 set OPENAI_MODEL=gpt-5.4-mini
+```
+
+## Testing
+
+```bash
+pip install -r requirements.txt -r requirements-dev.txt
+pytest tests -q
+```
+
+## Docker
+
+```bash
+docker build -t ssd-predictive-maintenance .
+docker run --rm -p 8000:8000 --env-file .env.example ssd-predictive-maintenance
 ```
 
 ## Demo Flow
@@ -232,4 +312,4 @@ Developed an SSD predictive maintenance platform using Python and FastAPI to ana
 - integrate with ticketing systems
 - add alert acknowledgement and status tracking
 - export PDF reports
-- add Docker and CI/CD
+- persist work orders and alert acknowledgement history

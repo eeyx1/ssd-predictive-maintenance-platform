@@ -4,6 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>SSD Predictive Maintenance Platform</title>
+    <link rel="icon" href="data:," />
     <link rel="stylesheet" href="/static/styles.css" />
   </head>
   <body>
@@ -73,6 +74,14 @@
           <p id="fleetReport" class="report">Generate a fleet report to summarize operational risk.</p>
         </article>
       </section>
+
+      <section class="panel work-order-panel">
+        <div class="panel-head">
+          <h2>Maintenance Work Orders</h2>
+          <span>Owner, SLA, evidence, and closure criteria</span>
+        </div>
+        <div id="workOrders" class="work-order-grid"></div>
+      </section>
     </main>
 
     <script>
@@ -84,16 +93,19 @@
       const alertQueue = document.getElementById("alertQueue");
       const reportButton = document.getElementById("reportButton");
       const fleetReport = document.getElementById("fleetReport");
+      const workOrders = document.getElementById("workOrders");
 
       async function loadDevices() {
-        const [devicesResponse, summaryResponse, alertsResponse] = await Promise.all([
+        const [devicesResponse, summaryResponse, alertsResponse, workOrdersResponse] = await Promise.all([
           fetch("/api/devices"),
           fetch("/api/fleet-summary"),
           fetch("/api/alerts"),
+          fetch("/api/work-orders"),
         ]);
         const payload = await devicesResponse.json();
         const summaryPayload = await summaryResponse.json();
         const alertsPayload = await alertsResponse.json();
+        const workOrdersPayload = await workOrdersResponse.json();
         const summary = summaryPayload.summary;
         tableBody.innerHTML = "";
         fleetMetrics.innerHTML = `
@@ -134,6 +146,22 @@
             `
           )
           .join("");
+
+        workOrders.innerHTML = workOrdersPayload.work_orders
+          .slice(0, 4)
+          .map(
+            (item) => `
+              <div class="work-order">
+                <div class="work-order-head">
+                  <strong>${item.work_order_id}</strong>
+                  <span>${item.priority} | ${item.sla_hours}h SLA</span>
+                </div>
+                <p>${item.primary_hypothesis}</p>
+                <small>${item.owner_team}</small>
+              </div>
+            `
+          )
+          .join("");
       }
 
       async function loadDevice(deviceId) {
@@ -165,6 +193,11 @@
           <ul class="signals">
             ${prediction.top_signals.map((item) => `<li>${item}</li>`).join("")}
           </ul>
+          <h3>Weighted Risk Breakdown</h3>
+          <div class="breakdown-list">
+            ${prediction.risk_breakdown.map((item) => `<span>${item.metric}: +${item.weight}</span>`).join("")}
+          </div>
+          <p class="report">Confidence: ${prediction.confidence.level} - ${prediction.confidence.reason}</p>
           <h3>Recommended Actions</h3>
           <ul class="signals">
             ${prediction.recommended_actions.map((item) => `<li>${item}</li>`).join("")}

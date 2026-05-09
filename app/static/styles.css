@@ -261,11 +261,56 @@ tbody tr:hover {
   color: var(--muted);
 }
 
+.breakdown-list {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+
+.breakdown-list span {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 6px 9px;
+  background: #f7f9fb;
+  color: var(--muted);
+}
+
+.work-order-panel {
+  margin-top: 14px;
+}
+
+.work-order-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.work-order {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #f7f9fb;
+  padding: 12px;
+}
+
+.work-order-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.work-order p,
+.work-order small {
+  color: var(--muted);
+  line-height: 1.5;
+}
+
 @media (max-width: 900px) {
   .topbar,
   .grid,
   .fleet-metrics,
-  .status-grid {
+  .status-grid,
+  .work-order-grid {
     grid-template-columns: 1fr;
   }
 }
